@@ -600,10 +600,22 @@ async fn handle_fp_list(coord: &Arc<Coordinator>) -> Response {
             info!("FP:LIST BLE response: status=0x{:02x} payload={:?}", status, payload);
             if status == protocol::RSP_OK && !payload.is_empty() {
                 let mut ds = coord.device_status.write().await;
-                if let Some(ref mut s) = *ds {
-                    s.fp_bitmap = payload[0];
-                    info!("FP:LIST set bitmap={}", s.fp_bitmap);
+                match *ds {
+                    Some(ref mut s) => s.fp_bitmap = payload[0],
+                    // GET_STATUS-on-connect can miss its window if the BLE
+                    // helper subprocess wasn't ready yet, leaving this at
+                    // None for the rest of the session. A live FP:LIST
+                    // response means the device is reachable, so seed a
+                    // status from it rather than staying stuck on NO_STATUS.
+                    None => *ds = Some(immurok_common::types::DeviceStatus {
+                        fp_bitmap: payload[0],
+                        paired: false,
+                        battery: 0,
+                        fw_version: String::new(),
+                        pending_match: None,
+                    }),
                 }
+                info!("FP:LIST set bitmap={}", payload[0]);
             }
         }
         Err(e) => {

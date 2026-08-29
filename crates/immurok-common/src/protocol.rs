@@ -135,6 +135,10 @@ pub const MAX_PAYLOAD_SIZE: usize = 62;
 
 // Timing
 pub const BLE_COMMAND_TIMEOUT_SECS: u64 = 5;
+// dbus-fast helper startup (python3 interpreter + D-Bus connect + notify
+// subscription) can take a few seconds; give it more room than a normal
+// command round-trip before giving up on the READY handshake.
+pub const BLE_HELPER_READY_TIMEOUT_SECS: u64 = 15;
 pub const BLE_RECONNECT_INTERVAL_SECS: u64 = 1;
 pub const BLE_CONNECTING_TIMEOUT_SECS: u64 = 10;
 // Reconnect backoff ceiling. The 1s base above is the FAST path for a normal
