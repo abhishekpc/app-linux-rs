@@ -603,7 +603,6 @@ async fn connect_and_serve(
     let (notify_tx, notify_rx) = mpsc::channel::<Vec<u8>>(64);
     let (response_tx, response_rx) = mpsc::channel::<String>(16);
     let (disconnect_tx, mut disconnect_rx) = mpsc::channel::<()>(1);
-    let (ready_tx, ready_rx) = oneshot::channel::<()>();
 
     // helper 的 READY 必须等到才能发第一条命令。以前 READY 只是在读取任务里
     // 打一行日志，会话主流程不等它 —— 实测第一条 GET_STATUS 比 READY 早 49ms
@@ -681,17 +680,6 @@ async fn connect_and_serve(
 
     let mut state = BleState::new();
     let mut notify_rx = notify_rx;
-
-    // Wait for the helper's READY handshake before sending anything — the
-    // Python dbus-fast startup (interpreter + D-Bus connect + notify
-    // subscription) can take longer than a single command timeout, and
-    // firing commands before it's listening previously caused GET_STATUS to
-    // time out silently, leaving device_status stuck at None for the whole
-    // session (surfacing as "fp list" -> NO_STATUS forever).
-    match tokio::time::timeout(Duration::from_secs(BLE_HELPER_READY_TIMEOUT_SECS), ready_rx).await {
-        Ok(_) => {}
-        Err(_) => warn!("BLE helper did not signal READY within {}s — proceeding anyway", BLE_HELPER_READY_TIMEOUT_SECS),
-    }
 
     info!("BLE session active");
 
